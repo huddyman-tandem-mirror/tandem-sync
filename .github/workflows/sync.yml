@@ -1,0 +1,56 @@
+name: Tandem to Nightscout sync
+
+# Runs every 10 minutes: pulls the latest bolus/basal/IOB/carb data your son's
+# Tandem Mobi has already uploaded to Tandem Source, and pushes it into your
+# Nightscout site. Also pings Nightscout so its free hosting tier doesn't fall
+# asleep, and records a timestamp so this scheduled workflow doesn't get
+# auto-disabled by GitHub after 60 days of repo inactivity.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}   # lets you click "Run workflow" in GitHub to test on demand
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install tconnectsync
+        run: pip install --quiet tconnectsync
+
+      - name: Run one sync cycle (Tandem Source -> Nightscout)
+        env:
+          TCONNECT_EMAIL: ${{ secrets.TCONNECT_EMAIL }}
+          TCONNECT_PASSWORD: ${{ secrets.TCONNECT_PASSWORD }}
+          NS_URL: ${{ secrets.NS_URL }}
+          NS_SECRET: ${{ secrets.NS_SECRET }}
+          TIMEZONE_NAME: ${{ secrets.TIMEZONE_NAME }}
+          PUMP_SERIAL_NUMBER: ${{ secrets.PUMP_SERIAL_NUMBER }}
+        run: tconnectsync
+
+      - name: Keep Nightscout site awake
+        if: always()
+        run: |
+          curl -fsS "${{ secrets.NS_URL }}/api/v1/status.json" > /dev/null \
+            && echo "Nightscout responded OK" \
+            || echo "Ping failed (non-fatal, will retry next run)"
+
+      - name: Record last run timestamp
+        if: always()
+        run: |
+          mkdir -p status
+          date -u +"Last sync attempt: %Y-%m-%d %H:%M UTC" > status/last_run.txt
+          git config user.name "mobi-mirror-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add status/last_run.txt
+          git diff --staged --quiet || git commit -m "Update sync status [skip ci]"
+          git push
