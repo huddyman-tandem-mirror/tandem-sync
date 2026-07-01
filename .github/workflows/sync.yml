@@ -24,18 +24,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install tconnectsync
-        run: pip install --quiet tconnectsync
+      - name: Install dependencies
+        run: pip install --quiet "tconnectsync" "requests"
 
-      - name: Run one sync cycle (Tandem Source -> Nightscout)
+      - name: Run sync (guardian-account BFF path)
         env:
           TCONNECT_EMAIL: ${{ secrets.TCONNECT_EMAIL }}
           TCONNECT_PASSWORD: ${{ secrets.TCONNECT_PASSWORD }}
           NS_URL: ${{ secrets.NS_URL }}
           NS_SECRET: ${{ secrets.NS_SECRET }}
-          TIMEZONE_NAME: ${{ secrets.TIMEZONE_NAME }}
           PUMP_SERIAL_NUMBER: ${{ secrets.PUMP_SERIAL_NUMBER }}
-        run: tconnectsync
+        run: python mobi_sync.py
 
       - name: Keep Nightscout site awake
         if: always()
