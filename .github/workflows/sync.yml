@@ -1,15 +1,9 @@
 name: Tandem to Nightscout sync
 
-# Runs every 10 minutes: pulls the latest bolus/basal/IOB/carb data your son's
-# Tandem Mobi has already uploaded to Tandem Source, and pushes it into your
-# Nightscout site. Also pings Nightscout so its free hosting tier doesn't fall
-# asleep, and records a timestamp so this scheduled workflow doesn't get
-# auto-disabled by GitHub after 60 days of repo inactivity.
-
 on:
   schedule:
     - cron: '*/10 * * * *'
-  workflow_dispatch: {}   # lets you click "Run workflow" in GitHub to test on demand
+  workflow_dispatch: {}
 
 permissions:
   contents: write
