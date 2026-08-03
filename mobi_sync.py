@@ -44,7 +44,7 @@ PASSWORD    = os.environ["TCONNECT_PASSWORD"]
 NS_URL      = os.environ["NS_URL"].rstrip("/")
 NS_SECRET   = os.environ["NS_SECRET"]
 PUMP_SERIAL = os.environ.get("PUMP_SERIAL_NUMBER", "1562014")
-HOURS_BACK  = int(os.environ.get("HOURS_BACK", "3"))
+HOURS_BACK  = int(os.environ.get("HOURS_BACK", "24"))
 
 # Event IDs observed in the web UI's network calls for Tandem Mobi + Control-IQ+
 # (superset of tconnectsync's DEFAULT_EVENT_IDS — includes newer CIQ+ types)
@@ -217,8 +217,9 @@ for evt in events:
     # ── Timestamp ──────────────────────────────────────────────────────────
     ts_raw = _get_any(
         evt,
+        "pumpDateTime", "estimatedDateTime",
         "eventDateTime", "dateTime", "timestamp", "created_at",
-        "time", "pumpDateTime", "bolusDateTime", "eventDate",
+        "time", "bolusDateTime", "eventDate",
     )
     if not ts_raw:
         continue
@@ -232,8 +233,8 @@ for evt in events:
     # ── Event type ID ──────────────────────────────────────────────────────
     type_id_raw = _get_any(
         evt,
-        "eventTypeId", "eventId", "typeId", "type_id", "eventType",
-        "pumpEventTypeId",
+        "eventCode", "eventTypeId", "eventId", "typeId", "type_id",
+        "eventType", "pumpEventTypeId",
     )
     try:
         type_id = int(type_id_raw) if type_id_raw is not None else None
@@ -243,6 +244,8 @@ for evt in events:
     # ── Insulin delivered ──────────────────────────────────────────────────
     insulin_raw = _get_any(
         evt,
+        "eventProperties.deliveredAmount", "eventProperties.bolusAmount",
+        "eventProperties.totalDelivered", "eventProperties.insulin",
         "deliveredAmount", "bolusAmount", "insulin", "delivered",
         "totalDelivered", "insulinDelivered", "bolusDelivered",
         "bolus.deliveredAmount", "bolus.amount", "bolus.delivered",
@@ -257,6 +260,8 @@ for evt in events:
     # ── Carbs ──────────────────────────────────────────────────────────────
     carbs_raw = _get_any(
         evt,
+        "eventProperties.carbAmount", "eventProperties.carbs",
+        "eventProperties.carbsGrams", "eventProperties.mealCarbs",
         "carbAmount", "carbs", "carbsGrams", "carbIntake",
         "totalCarbs", "mealCarbs", "carbGrams",
         "meal.carbs", "meal.carbAmount",
