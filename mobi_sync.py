@@ -323,6 +323,18 @@ for evt in events:
 
 log.info(f"Parsed {len(treatments)} treatments from {len(events)} events")
 
+# ── Deduplicate (same amount within same minute = same bolus logged twice) ────
+_seen_keys = set()
+_deduped = []
+for _t in treatments:
+    _key = (_t.get("created_at", "")[:16], str(_t.get("insulin")), str(_t.get("carbs")))
+    if _key not in _seen_keys:
+        _seen_keys.add(_key)
+        _deduped.append(_t)
+if len(_deduped) < len(treatments):
+    log.info(f"Deduplicated {len(treatments) - len(_deduped)} duplicate(s) → {len(_deduped)} treatments")
+treatments = _deduped
+
 # ── Upload to Nightscout ──────────────────────────────────────────────────────
 def ns_headers():
     secret_hash = hashlib.sha1(NS_SECRET.encode()).hexdigest()
