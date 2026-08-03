@@ -181,6 +181,15 @@ else:
 
 log.info(f"Events to process: {len(events)}")
 
+# DIAGNOSTIC: show first eventProperties seen for each unique eventCode
+_seen_codes = {}
+for _evt in events:
+    _ec = _evt.get("eventCode")
+    if _ec not in _seen_codes:
+        _seen_codes[_ec] = _evt.get("eventProperties", {})
+for _ec in sorted(_seen_codes.keys()):
+    log.info(f"CODE {_ec}: {json.dumps(_seen_codes[_ec])}")
+
 # ── Parse events → Nightscout treatments ─────────────────────────────────────
 #
 # Field names aren't publicly documented for the BFF API.
