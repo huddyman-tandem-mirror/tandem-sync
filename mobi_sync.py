@@ -250,31 +250,19 @@ for evt in events:
     except (ValueError, TypeError):
         type_id = None
 
-    # Log full eventProperties for bolus event codes so we can see field names
-    BOLUS_CODES = {4, 5, 26, 28, 27, 434}
-    if type_id in BOLUS_CODES:
-        props = evt.get("eventProperties", {})
-        log.info(f"BOLUS_EVENT typeId={type_id} props={json.dumps(props)}")
-
     # ── Insulin delivered ──────────────────────────────────────────────────
-    # Tandem stores volumes in milliunits (0.001 U), so divide by 1000
-    ep = evt.get("eventProperties", {}) or {}
     insulin_raw = _get_any(
         evt,
+        "eventProperties.insulinDelivered",   # CODE 20/21 — bolus completion
+        "eventProperties.insulinRequested",    # fallback if delivered missing
+        "eventProperties.bolusSize",           # CODE 55 — programmed bolus
         "eventProperties.deliveredVolume", "eventProperties.deliveredAmount",
         "eventProperties.bolusAmount", "eventProperties.totalDelivered",
-        "eventProperties.volume", "eventProperties.insulin",
+        "eventProperties.insulin",
         "deliveredAmount", "bolusAmount", "insulin", "delivered",
-        "totalDelivered", "insulinDelivered", "bolusDelivered",
-        "bolus.deliveredAmount", "bolus.amount",
-        "details.deliveredAmount",
     )
     try:
-        insulin_val = float(insulin_raw) if insulin_raw is not None else None
-        # If value looks like milliunits (>20 for a realistic bolus), divide by 1000
-        if insulin_val is not None and insulin_val > 20:
-            insulin_val = insulin_val / 1000
-        insulin = round(insulin_val, 3) if insulin_val is not None else None
+        insulin = round(float(insulin_raw), 3) if insulin_raw is not None else None
     except (ValueError, TypeError):
         insulin = None
 
