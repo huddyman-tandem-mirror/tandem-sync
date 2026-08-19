@@ -66,6 +66,19 @@ api = TandemSourceApi(EMAIL, PASSWORD)
 log.info(f"  pumperId  = {api.pumperId}")
 log.info(f"  accountId = {api.accountId}")
 
+# ── Wake Nightscout early (Render free tier sleeps after inactivity) ──────────
+# Ping now so it has time to boot while we fetch pump data below.
+log.info("Waking Nightscout (may take up to 60 s on free tier)…")
+try:
+    _wake = requests.get(
+        f"{NS_URL}/api/v1/status.json",
+        headers={"Accept": "application/json"},
+        timeout=90,
+    )
+    log.info(f"  Nightscout awake: HTTP {_wake.status_code}")
+except Exception as _e:
+    log.warning(f"  Wake ping failed ({_e}) — will try upload anyway")
+
 # ── Device discovery (BFF pumpers endpoint) ───────────────────────────────────
 log.info("Fetching pumper/device info…")
 pumper = api.pumper_info()
@@ -350,7 +363,7 @@ if treatments:
         f"{NS_URL}/api/v1/treatments",
         json=treatments,
         headers=ns_headers(),
-        timeout=30,
+        timeout=90,
     )
     if resp.status_code in (200, 201):
         log.info(f"  ✓ Nightscout accepted: HTTP {resp.status_code}")
