@@ -39,7 +39,6 @@
       padding: 12px 14px 32px;
     }
 
-    /* ── Header ─────────────────────────────────────────────────────────── */
     .header {
       display: flex;
       align-items: center;
@@ -70,7 +69,6 @@
       cursor: pointer;
     }
 
-    /* ── Status bar ─────────────────────────────────────────────────────── */
     .status-bar {
       display: flex;
       align-items: center;
@@ -107,7 +105,6 @@
     .btn-refresh.spinning { animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Error banner ───────────────────────────────────────────────────── */
     .error-banner {
       background: rgba(255,107,107,0.12);
       border: 1px solid var(--danger);
@@ -120,7 +117,6 @@
     }
     .error-banner.show { display: block; }
 
-    /* ── Cards ──────────────────────────────────────────────────────────── */
     .card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -174,7 +170,6 @@
       margin-top: 5px;
     }
 
-    /* ── Grid layouts ───────────────────────────────────────────────────── */
     .row-3 {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -193,7 +188,6 @@
     }
     .row-2 .card { margin-bottom: 0; }
 
-    /* ── Color classes ──────────────────────────────────────────────────── */
     .c-green  { color: var(--success); }
     .c-yellow { color: var(--warning); }
     .c-red    { color: var(--danger); }
@@ -202,10 +196,8 @@
     .c-teal   { color: var(--accent); }
     .c-muted  { color: var(--muted); }
 
-    /* ── Trend arrow ────────────────────────────────────────────────────── */
     .trend { font-size: 22px; margin-left: 4px; }
 
-    /* ── Last bolus card ────────────────────────────────────────────────── */
     .bolus-row {
       display: flex;
       align-items: baseline;
@@ -220,7 +212,6 @@
     .bolus-unit { font-size: 15px; color: var(--muted); }
     .bolus-carbs { font-size: 20px; color: var(--muted); margin-left: 2px; }
 
-    /* ── History list ───────────────────────────────────────────────────── */
     .hist-row {
       display: flex;
       align-items: center;
@@ -241,7 +232,6 @@
       font-size: 14px;
     }
 
-    /* ── Settings modal ─────────────────────────────────────────────────── */
     .overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.75);
@@ -316,7 +306,6 @@
       margin-top: 8px;
     }
 
-    /* ── Setup screen ───────────────────────────────────────────────────── */
     .setup {
       text-align: center;
       padding: 60px 16px 40px;
@@ -344,7 +333,6 @@
   <div id="content"></div>
 </div>
 
-<!-- Settings sheet -->
 <div class="overlay" id="overlay">
   <div class="sheet">
     <div class="sheet-title">⚙️ Settings</div>
@@ -363,7 +351,6 @@
 </div>
 
 <script>
-// ── Storage ───────────────────────────────────────────────────────────────────
 const cfg = {
   get url()    { return localStorage.getItem('mm_url')    || ''; },
   get secret() { return localStorage.getItem('mm_secret') || ''; },
@@ -373,24 +360,12 @@ const cfg = {
   }
 };
 
-// ── SHA-1 (for NS api-secret header) ─────────────────────────────────────────
-async function sha1(str) {
-  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-// ── Nightscout fetch ──────────────────────────────────────────────────────────
 async function nsGet(path) {
-  const hash = await sha1(cfg.secret);
-  const res  = await fetch(cfg.url + path, {
-    headers: { 'api-secret': hash, Accept: 'application/json' },
-    cache: 'no-store'
-  });
+  const res = await fetch(cfg.url + path, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const TREND = {
   DoubleUp:'↑↑', SingleUp:'↑', FortyFiveUp:'↗',
   Flat:'→', FortyFiveDown:'↘', SingleDown:'↓', DoubleDown:'↓↓'
@@ -420,23 +395,16 @@ function dash(v) {
   return v !== null && v !== undefined ? v : '—';
 }
 
-// ── Render ────────────────────────────────────────────────────────────────────
 function render(entries, dsArr, treatments) {
   const bg  = entries?.[0];
   const ds  = dsArr?.[0];
 
-  // BG
   const bgv  = bg?.sgv ?? null;
   const bgc  = bgv ? bgColor(bgv) : 'c-muted';
   const bgar = bgv ? arrow(bg.direction) : '';
   const bgAge = bg ? timeAgo(bg.date) : '—';
 
-  // IOB
-  let iob   = null;
-  let basal = null;
-  let pbasal = null;
-  let isf   = null;
-  let cr    = null;
+  let iob = null, basal = null, pbasal = null, isf = null, cr = null;
 
   if (ds?.pump?.iob?.bolusiob !== undefined)
     iob = parseFloat(ds.pump.iob.bolusiob).toFixed(2);
@@ -445,23 +413,20 @@ function render(entries, dsArr, treatments) {
     pbasal = ds.pump.basal.profile_rate != null
            ? parseFloat(ds.pump.basal.profile_rate).toFixed(3) : null;
   }
-  if (ds?.isf   !== undefined) isf = ds.isf;
-  if (ds?.carbRatio !== undefined) cr = ds.carbRatio;
+  if (ds?.isf       !== undefined) isf = ds.isf;
+  if (ds?.carbRatio !== undefined) cr  = ds.carbRatio;
 
-  // Treatments
-  const now      = Date.now();
-  const ago3h    = now - 3 * 3600_000;
-  const boluses  = (treatments || [])
+  const now   = Date.now();
+  const ago3h = now - 3 * 3600_000;
+  const boluses = (treatments || [])
     .filter(t => ['Bolus','Meal Bolus'].includes(t.eventType))
     .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 
-  const recent   = boluses.filter(t => new Date(t.created_at) >= ago3h);
+  const recent    = boluses.filter(t => new Date(t.created_at) >= ago3h);
   const lastBolus = boluses[0] ?? null;
 
-  // Last bolus card
   let lastBolusHtml;
   if (lastBolus) {
-    const carbStr = lastBolus.carbs ? ` + ${lastBolus.carbs}g` : '';
     lastBolusHtml = `
       <div class="bolus-row">
         <span class="bolus-amount">${parseFloat(lastBolus.insulin).toFixed(2)}</span>
@@ -474,7 +439,6 @@ function render(entries, dsArr, treatments) {
     lastBolusHtml = '<div class="sub-text c-muted">No bolus data yet</div>';
   }
 
-  // History rows
   const histHtml = recent.length
     ? recent.map(t => `
         <div class="hist-row">
@@ -484,7 +448,6 @@ function render(entries, dsArr, treatments) {
         </div>`).join('')
     : '<div class="hist-empty">No boluses in the last 3 hours</div>';
 
-  // Basal sub-note
   const basalSub = (pbasal && Math.abs(parseFloat(basal) - parseFloat(pbasal)) > 0.05)
     ? `<div class="sub-text">Profile: ${pbasal} U/hr</div>` : '';
 
@@ -492,7 +455,6 @@ function render(entries, dsArr, treatments) {
     ? `<div class="sub-text">as of ${timeAgo(ds.created_at)}</div>` : '';
 
   document.getElementById('content').innerHTML = `
-    <!-- Row 1: BG | IOB | Basal -->
     <div class="row-3">
       <div class="card">
         <div class="card-label">Blood Sugar</div>
@@ -511,19 +473,16 @@ function render(entries, dsArr, treatments) {
       </div>
     </div>
 
-    <!-- Last Bolus -->
     <div class="card">
       <div class="card-label">Last Bolus</div>
       ${lastBolusHtml}
     </div>
 
-    <!-- 3-hr History -->
     <div class="card">
       <div class="card-label">3-Hour Bolus History</div>
       ${histHtml}
     </div>
 
-    <!-- CR | ISF -->
     <div class="row-2">
       <div class="card">
         <div class="card-label">Carb Ratio</div>
@@ -539,7 +498,6 @@ function render(entries, dsArr, treatments) {
   `;
 }
 
-// ── Main refresh ──────────────────────────────────────────────────────────────
 let lastRefreshAt = null;
 
 async function refresh() {
@@ -573,7 +531,6 @@ async function refresh() {
   }
 }
 
-// Update "X min ago" label every 30 s
 setInterval(() => {
   if (!lastRefreshAt) return;
   const s = (Date.now() - lastRefreshAt) / 1000;
@@ -588,10 +545,8 @@ setInterval(() => {
   }
 }, 30_000);
 
-// Auto-refresh every 5 min
 setInterval(refresh, 5 * 60_000);
 
-// ── Error helpers ─────────────────────────────────────────────────────────────
 function showErr(msg) {
   const el = document.getElementById('errBanner');
   el.textContent = msg;
@@ -601,7 +556,6 @@ function hideErr() {
   document.getElementById('errBanner').classList.remove('show');
 }
 
-// ── Settings sheet ────────────────────────────────────────────────────────────
 function openSettings() {
   document.getElementById('inUrl').value    = cfg.url;
   document.getElementById('inSecret').value = cfg.secret;
@@ -621,7 +575,6 @@ function saveSettings() {
   refresh();
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 if (!cfg.url || !cfg.secret) {
   document.getElementById('dot').className = 'dot error';
   document.getElementById('statusText').textContent = 'Not connected';
