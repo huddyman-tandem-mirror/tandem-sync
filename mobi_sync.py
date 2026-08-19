@@ -378,6 +378,93 @@ else:
         "SAMPLE / NEW SHAPE lines above)."
     )
 
+# ── Push pump status to Nightscout devicestatus ──────────────────────────────
+log.info("Extracting pump status for devicestatus…")
+_iob = None
+_iob_ts = None
+_basal_rate = None
+_profile_basal = None
+_basal_ts = None
+_isf = None
+_carb_ratio = None
+
+for _evt in sorted(events, key=lambda e: str(e.get("pumpDateTime", "")), reverse=True):
+    _ec  = _evt.get("eventCode")
+    _pr  = _evt.get("eventProperties", {})
+    _ts  = _evt.get("pumpDateTime") or _evt.get("estimatedDateTime", "")
+
+    if _ec == 20 and _iob is None:
+        _v = _pr.get("iob")
+        if _v is not None:
+            try:
+                _iob = round(float(_v), 3)
+                _iob_ts = _ts
+            except (ValueError, TypeError):
+                pass
+
+    if _ec == 279 and _basal_rate is None:
+        try:
+            _ar = _pr.get("algorithmRate")
+            _pb = _pr.get("profileBasalRate")
+            if _ar is not None and int(_ar) != 65535:
+                _basal_rate = round(float(_ar) / 1000, 3)
+                _basal_ts = _ts
+            if _pb is not None:
+                _profile_basal = round(float(_pb) / 1000, 3)
+        except (ValueError, TypeError):
+            pass
+
+    if _ec == 65 and _isf is None:
+        try:
+            _v = _pr.get("isf")
+            if _v:
+                _isf = round(float(_v), 1)
+        except (ValueError, TypeError):
+            pass
+
+    if _ec == 64 and _carb_ratio is None:
+        try:
+            _v = _pr.get("carbRatio")
+            if _v and float(_v) > 0:
+                _carb_ratio = round(float(_v), 1)
+        except (ValueError, TypeError):
+            pass
+
+log.info(
+    f"  IOB={_iob}U  basal={_basal_rate}U/hr  "
+    f"profile={_profile_basal}U/hr  ISF={_isf}  CR={_carb_ratio}"
+)
+
+if any(v is not None for v in [_iob, _basal_rate, _isf, _carb_ratio]):
+    _ds = {
+        "created_at": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "device": "tandem-mobi-sync",
+        "pump": {},
+    }
+    if _iob is not None:
+        _ds["pump"]["iob"] = {"bolusiob": _iob, "timestamp": _iob_ts}
+    if _basal_rate is not None:
+        _ds["pump"]["basal"] = {"rate": _basal_rate, "timestamp": _basal_ts}
+        if _profile_basal is not None:
+            _ds["pump"]["basal"]["profile_rate"] = _profile_basal
+    if _isf is not None:
+        _ds["isf"] = _isf
+    if _carb_ratio is not None:
+        _ds["carbRatio"] = _carb_ratio
+
+    _ds_resp = requests.post(
+        f"{NS_URL}/api/v1/devicestatus",
+        json=_ds,
+        headers=ns_headers(),
+        timeout=30,
+    )
+    if _ds_resp.status_code in (200, 201):
+        log.info(f"  ✓ devicestatus accepted: HTTP {_ds_resp.status_code}")
+    else:
+        log.warning(f"  ✗ devicestatus: HTTP {_ds_resp.status_code}: {_ds_resp.text[:200]}")
+else:
+    log.info("  No pump status data extracted — skipping devicestatus push")
+
 # ── Keep Nightscout awake ─────────────────────────────────────────────────────
 try:
     ping = requests.get(
