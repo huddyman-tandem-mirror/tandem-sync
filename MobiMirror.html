@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mobi Mirror">
+  <title>Mobi Mirror</title>
+  <style>
+    :root {
+      --bg:       #0d0d1a;
+      --card:     #161628;
+      --border:   #252540;
+      --accent:   #00d4aa;
+      --text:     #ffffff;
+      --muted:    #8892b0;
+      --danger:   #ff6b6b;
+      --warning:  #fbbf24;
+      --success:  #4ade80;
+      --blue:     #60a5fa;
+      --purple:   #a78bfa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      min-height: 100svh;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .app {
+      max-width: 430px;
+      margin: 0 auto;
+      padding: 12px 14px 32px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding-top: 6px;
+    }
+
+    .header-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .header-title em { color: var(--accent); font-style: normal; }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* ── Status bar ─────────────────────────────────────────────────────── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+    .dot.stale  { background: var(--warning); }
+    .dot.error  { background: var(--danger); }
+    .dot.loading { background: var(--muted); animation: pulse 1s ease-in-out infinite; }
+
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.3 } }
+
+    .btn-refresh {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: transform 0.3s;
+      line-height: 1;
+    }
+    .btn-refresh.spinning { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error banner ───────────────────────────────────────────────────── */
+    .error-banner {
+      background: rgba(255,107,107,0.12);
+      border: 1px solid var(--danger);
+      border-radius: 12px;
+      padding: 10px 14px;
+      color: var(--danger);
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .error-banner.show { display: block; }
+
+    /* ── Cards ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 10px;
+    }
+
+    .card-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .big-val {
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: -2.5px;
+      line-height: 1;
+    }
+
+    .big-val .unit {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0;
+      margin-left: 2px;
+    }
+
+    .med-val {
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .med-val .unit {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0;
+      margin-left: 2px;
+    }
+
+    .sub-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    /* ── Grid layouts ───────────────────────────────────────────────────── */
+    .row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .row-3 .card { margin-bottom: 0; padding: 14px 12px; }
+    .row-3 .big-val { font-size: 34px; letter-spacing: -1px; }
+    .row-3 .big-val .unit { font-size: 12px; }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .row-2 .card { margin-bottom: 0; }
+
+    /* ── Color classes ──────────────────────────────────────────────────── */
+    .c-green  { color: var(--success); }
+    .c-yellow { color: var(--warning); }
+    .c-red    { color: var(--danger); }
+    .c-blue   { color: var(--blue); }
+    .c-purple { color: var(--purple); }
+    .c-teal   { color: var(--accent); }
+    .c-muted  { color: var(--muted); }
+
+    /* ── Trend arrow ────────────────────────────────────────────────────── */
+    .trend { font-size: 22px; margin-left: 4px; }
+
+    /* ── Last bolus card ────────────────────────────────────────────────── */
+    .bolus-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .bolus-amount {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      color: var(--blue);
+    }
+    .bolus-unit { font-size: 15px; color: var(--muted); }
+    .bolus-carbs { font-size: 20px; color: var(--muted); margin-left: 2px; }
+
+    /* ── History list ───────────────────────────────────────────────────── */
+    .hist-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .hist-row:last-child { border-bottom: none; padding-bottom: 2px; }
+    .hist-time { font-size: 13px; color: var(--muted); width: 58px; flex-shrink: 0; }
+    .hist-val  { font-size: 15px; font-weight: 600; color: var(--blue); flex: 1; }
+    .hist-tag  {
+      font-size: 11px; color: var(--muted);
+      background: var(--border); border-radius: 6px; padding: 2px 8px;
+      white-space: nowrap;
+    }
+    .hist-empty {
+      text-align: center; color: var(--muted); padding: 14px 0;
+      font-size: 14px;
+    }
+
+    /* ── Settings modal ─────────────────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+    }
+    .overlay.open { display: flex; }
+
+    .sheet {
+      background: #1a1a2e;
+      border-radius: 22px 22px 0 0;
+      border-top: 1px solid var(--border);
+      padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+      width: 100%;
+    }
+
+    .sheet-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .field { margin-bottom: 16px; }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .field input:focus { border-color: var(--accent); }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    /* ── Setup screen ───────────────────────────────────────────────────── */
+    .setup {
+      text-align: center;
+      padding: 60px 16px 40px;
+    }
+    .setup-icon { font-size: 56px; margin-bottom: 16px; }
+    .setup h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .setup p { color: var(--muted); font-size: 15px; margin-bottom: 28px; line-height: 1.5; }
+    .setup .btn-primary { max-width: 240px; margin: 0 auto; display: block; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-title">Mobi&nbsp;<em>Mirror</em></div>
+    <button class="btn-icon" onclick="openSettings()" title="Settings">⚙️</button>
+  </div>
+
+  <div class="status-bar">
+    <div class="dot loading" id="dot"></div>
+    <span id="statusText">Connecting…</span>
+    <button class="btn-refresh" id="btnRefresh" onclick="refresh()" title="Refresh">↻</button>
+  </div>
+
+  <div class="error-banner" id="errBanner"></div>
+  <div id="content"></div>
+</div>
+
+<!-- Settings sheet -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-title">⚙️ Settings</div>
+    <div class="field">
+      <label>Nightscout URL</label>
+      <input id="inUrl" type="url" placeholder="https://your-site.onrender.com"
+             autocorrect="off" autocapitalize="none" spellcheck="false">
+    </div>
+    <div class="field">
+      <label>API Secret</label>
+      <input id="inSecret" type="password" placeholder="Your Nightscout API_SECRET">
+    </div>
+    <button class="btn-primary" onclick="saveSettings()">Save &amp; Connect</button>
+    <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ── Storage ───────────────────────────────────────────────────────────────────
+const cfg = {
+  get url()    { return localStorage.getItem('mm_url')    || ''; },
+  get secret() { return localStorage.getItem('mm_secret') || ''; },
+  save(url, secret) {
+    localStorage.setItem('mm_url',    url.replace(/\/$/, ''));
+    localStorage.setItem('mm_secret', secret);
+  }
+};
+
+// ── SHA-1 (for NS api-secret header) ─────────────────────────────────────────
+async function sha1(str) {
+  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Nightscout fetch ──────────────────────────────────────────────────────────
+async function nsGet(path) {
+  const hash = await sha1(cfg.secret);
+  const res  = await fetch(cfg.url + path, {
+    headers: { 'api-secret': hash, Accept: 'application/json' },
+    cache: 'no-store'
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const TREND = {
+  DoubleUp:'↑↑', SingleUp:'↑', FortyFiveUp:'↗',
+  Flat:'→', FortyFiveDown:'↘', SingleDown:'↓', DoubleDown:'↓↓'
+};
+
+function arrow(dir) { return TREND[dir] || '→'; }
+
+function bgColor(v) {
+  if (v < 70)   return 'c-red';
+  if (v <= 180) return 'c-green';
+  if (v <= 250) return 'c-yellow';
+  return 'c-red';
+}
+
+function timeAgo(d) {
+  const s = (Date.now() - new Date(d)) / 1000;
+  if (s < 55)   return 'just now';
+  if (s < 3600) return Math.round(s/60) + 'm ago';
+  return (Math.round(s/360)/10) + 'h ago';
+}
+
+function fmtTime(d) {
+  return new Date(d).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+}
+
+function dash(v) {
+  return v !== null && v !== undefined ? v : '—';
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(entries, dsArr, treatments) {
+  const bg  = entries?.[0];
+  const ds  = dsArr?.[0];
+
+  // BG
+  const bgv  = bg?.sgv ?? null;
+  const bgc  = bgv ? bgColor(bgv) : 'c-muted';
+  const bgar = bgv ? arrow(bg.direction) : '';
+  const bgAge = bg ? timeAgo(bg.date) : '—';
+
+  // IOB
+  let iob   = null;
+  let basal = null;
+  let pbasal = null;
+  let isf   = null;
+  let cr    = null;
+
+  if (ds?.pump?.iob?.bolusiob !== undefined)
+    iob = parseFloat(ds.pump.iob.bolusiob).toFixed(2);
+  if (ds?.pump?.basal?.rate !== undefined) {
+    basal  = parseFloat(ds.pump.basal.rate).toFixed(3);
+    pbasal = ds.pump.basal.profile_rate != null
+           ? parseFloat(ds.pump.basal.profile_rate).toFixed(3) : null;
+  }
+  if (ds?.isf   !== undefined) isf = ds.isf;
+  if (ds?.carbRatio !== undefined) cr = ds.carbRatio;
+
+  // Treatments
+  const now      = Date.now();
+  const ago3h    = now - 3 * 3600_000;
+  const boluses  = (treatments || [])
+    .filter(t => ['Bolus','Meal Bolus'].includes(t.eventType))
+    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const recent   = boluses.filter(t => new Date(t.created_at) >= ago3h);
+  const lastBolus = boluses[0] ?? null;
+
+  // Last bolus card
+  let lastBolusHtml;
+  if (lastBolus) {
+    const carbStr = lastBolus.carbs ? ` + ${lastBolus.carbs}g` : '';
+    lastBolusHtml = `
+      <div class="bolus-row">
+        <span class="bolus-amount">${parseFloat(lastBolus.insulin).toFixed(2)}</span>
+        <span class="bolus-unit">U</span>
+        ${lastBolus.carbs ? `<span class="bolus-carbs">+ ${lastBolus.carbs}g carbs</span>` : ''}
+      </div>
+      <div class="sub-text">${timeAgo(lastBolus.created_at)} &nbsp;·&nbsp; ${lastBolus.eventType}</div>
+    `;
+  } else {
+    lastBolusHtml = '<div class="sub-text c-muted">No bolus data yet</div>';
+  }
+
+  // History rows
+  const histHtml = recent.length
+    ? recent.map(t => `
+        <div class="hist-row">
+          <div class="hist-time">${fmtTime(t.created_at)}</div>
+          <div class="hist-val">${parseFloat(t.insulin).toFixed(2)}U${t.carbs ? ' + '+t.carbs+'g' : ''}</div>
+          <div class="hist-tag">${t.eventType === 'Meal Bolus' ? '🍽 Meal' : '💉 Bolus'}</div>
+        </div>`).join('')
+    : '<div class="hist-empty">No boluses in the last 3 hours</div>';
+
+  // Basal sub-note
+  const basalSub = (pbasal && Math.abs(parseFloat(basal) - parseFloat(pbasal)) > 0.05)
+    ? `<div class="sub-text">Profile: ${pbasal} U/hr</div>` : '';
+
+  const dsAge = ds?.created_at
+    ? `<div class="sub-text">as of ${timeAgo(ds.created_at)}</div>` : '';
+
+  document.getElementById('content').innerHTML = `
+    <!-- Row 1: BG | IOB | Basal -->
+    <div class="row-3">
+      <div class="card">
+        <div class="card-label">Blood Sugar</div>
+        <div class="big-val ${bgc}">${dash(bgv)}<span class="trend">${bgar}</span></div>
+        <div class="sub-text">${bgAge}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">IOB</div>
+        <div class="big-val c-purple">${dash(iob)}<span class="unit">U</span></div>
+        ${dsAge}
+      </div>
+      <div class="card">
+        <div class="card-label">Basal</div>
+        <div class="big-val c-teal" style="font-size:26px;letter-spacing:-0.5px">${dash(basal)}<span class="unit" style="font-size:10px">U/hr</span></div>
+        ${basalSub}
+      </div>
+    </div>
+
+    <!-- Last Bolus -->
+    <div class="card">
+      <div class="card-label">Last Bolus</div>
+      ${lastBolusHtml}
+    </div>
+
+    <!-- 3-hr History -->
+    <div class="card">
+      <div class="card-label">3-Hour Bolus History</div>
+      ${histHtml}
+    </div>
+
+    <!-- CR | ISF -->
+    <div class="row-2">
+      <div class="card">
+        <div class="card-label">Carb Ratio</div>
+        <div class="med-val">${dash(cr)}<span class="unit">g/U</span></div>
+        <div class="sub-text">From active profile</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Correction Factor</div>
+        <div class="med-val">${dash(isf)}<span class="unit" style="font-size:9px">mg/dL/U</span></div>
+        <div class="sub-text">ISF from profile</div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Main refresh ──────────────────────────────────────────────────────────────
+let lastRefreshAt = null;
+
+async function refresh() {
+  if (!cfg.url || !cfg.secret) { openSettings(); return; }
+
+  const btn = document.getElementById('btnRefresh');
+  const dot = document.getElementById('dot');
+
+  btn.classList.add('spinning');
+  dot.className = 'dot loading';
+  hideErr();
+
+  try {
+    const dayAgo = new Date(Date.now() - 86_400_000).toISOString();
+
+    const [entries, dsArr, treatments] = await Promise.all([
+      nsGet('/api/v1/entries?count=1'),
+      nsGet('/api/v1/devicestatus?count=1'),
+      nsGet(`/api/v1/treatments?find[created_at][$gte]=${dayAgo}&count=100`)
+    ]);
+
+    render(entries, dsArr, treatments);
+    lastRefreshAt = Date.now();
+    dot.className = 'dot';
+    document.getElementById('statusText').textContent = 'Updated just now';
+  } catch(e) {
+    dot.className = 'dot error';
+    showErr(`Can't reach Nightscout: ${e.message} — check Settings.`);
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
+
+// Update "X min ago" label every 30 s
+setInterval(() => {
+  if (!lastRefreshAt) return;
+  const s = (Date.now() - lastRefreshAt) / 1000;
+  const dot = document.getElementById('dot');
+  if (s < 70) {
+    document.getElementById('statusText').textContent = 'Updated just now';
+    dot.className = 'dot';
+  } else {
+    const m = Math.floor(s / 60);
+    document.getElementById('statusText').textContent = `Updated ${m}m ago`;
+    dot.className = m >= 12 ? 'dot stale' : 'dot';
+  }
+}, 30_000);
+
+// Auto-refresh every 5 min
+setInterval(refresh, 5 * 60_000);
+
+// ── Error helpers ─────────────────────────────────────────────────────────────
+function showErr(msg) {
+  const el = document.getElementById('errBanner');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideErr() {
+  document.getElementById('errBanner').classList.remove('show');
+}
+
+// ── Settings sheet ────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('inUrl').value    = cfg.url;
+  document.getElementById('inSecret').value = cfg.secret;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function saveSettings() {
+  const url    = document.getElementById('inUrl').value.trim();
+  const secret = document.getElementById('inSecret').value.trim();
+  if (!url || !secret) { alert('Please fill in both fields.'); return; }
+  cfg.save(url, secret);
+  closeSettings();
+  refresh();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+if (!cfg.url || !cfg.secret) {
+  document.getElementById('dot').className = 'dot error';
+  document.getElementById('statusText').textContent = 'Not connected';
+  document.getElementById('content').innerHTML = `
+    <div class="setup">
+      <div class="setup-icon">💉</div>
+      <h2>Welcome to Mobi Mirror</h2>
+      <p>Connect to Hudson's Nightscout site to see real-time pump data — IOB, boluses, basal rate, and more.</p>
+      <button class="btn-primary" onclick="openSettings()">Connect Nightscout →</button>
+    </div>`;
+  openSettings();
+} else {
+  refresh();
+}
+</script>
+</body>
+</html>
